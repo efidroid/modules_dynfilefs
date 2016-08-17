@@ -36,7 +36,7 @@ typedef struct {
     uint64_t num_allocated_blocks;
 } PACKED dynfilefs_data_hdr_t;
 
-static const char *dynfilefs_path = "/dynfilefs";
+static const char *dynfilefs_path = "/loop.fs";
 static char       *mount_source = NULL;
 static int        found_mount_target = 0;
 static uint64_t   file_size = 0;
