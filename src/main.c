@@ -5,7 +5,7 @@
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
 
-  gcc -Wall hello.c `pkg-config fuse --cflags --libs` -o hello
+  gcc -Wall dynfilefs.c `pkg-config fuse --cflags --libs` -o dynfilefs
 */
 
 #define FUSE_USE_VERSION 26
@@ -16,10 +16,10 @@
 #include <errno.h>
 #include <fcntl.h>
 
-static const char *hello_str = "Hello World!\n";
-static const char *hello_path = "/hello";
+static const char *dynfilefs_str = "Hello World!\n";
+static const char *dynfilefs_path = "/dynfilefs";
 
-static int hello_getattr(const char *path, struct stat *stbuf)
+static int dynfilefs_getattr(const char *path, struct stat *stbuf)
 {
 	int res = 0;
 
@@ -27,17 +27,17 @@ static int hello_getattr(const char *path, struct stat *stbuf)
 	if (strcmp(path, "/") == 0) {
 		stbuf->st_mode = S_IFDIR | 0755;
 		stbuf->st_nlink = 2;
-	} else if (strcmp(path, hello_path) == 0) {
+	} else if (strcmp(path, dynfilefs_path) == 0) {
 		stbuf->st_mode = S_IFREG | 0444;
 		stbuf->st_nlink = 1;
-		stbuf->st_size = strlen(hello_str);
+		stbuf->st_size = strlen(dynfilefs_str);
 	} else
 		res = -ENOENT;
 
 	return res;
 }
 
-static int hello_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
+static int dynfilefs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			 off_t offset, struct fuse_file_info *fi)
 {
 	(void) offset;
@@ -48,14 +48,14 @@ static int hello_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 	filler(buf, ".", NULL, 0);
 	filler(buf, "..", NULL, 0);
-	filler(buf, hello_path + 1, NULL, 0);
+	filler(buf, dynfilefs_path + 1, NULL, 0);
 
 	return 0;
 }
 
-static int hello_open(const char *path, struct fuse_file_info *fi)
+static int dynfilefs_open(const char *path, struct fuse_file_info *fi)
 {
-	if (strcmp(path, hello_path) != 0)
+	if (strcmp(path, dynfilefs_path) != 0)
 		return -ENOENT;
 
 	if ((fi->flags & 3) != O_RDONLY)
@@ -64,33 +64,33 @@ static int hello_open(const char *path, struct fuse_file_info *fi)
 	return 0;
 }
 
-static int hello_read(const char *path, char *buf, size_t size, off_t offset,
+static int dynfilefs_read(const char *path, char *buf, size_t size, off_t offset,
 		      struct fuse_file_info *fi)
 {
 	size_t len;
 	(void) fi;
-	if(strcmp(path, hello_path) != 0)
+	if(strcmp(path, dynfilefs_path) != 0)
 		return -ENOENT;
 
-	len = strlen(hello_str);
+	len = strlen(dynfilefs_str);
 	if (offset < len) {
 		if (offset + size > len)
 			size = len - offset;
-		memcpy(buf, hello_str + offset, size);
+		memcpy(buf, dynfilefs_str + offset, size);
 	} else
 		size = 0;
 
 	return size;
 }
 
-static struct fuse_operations hello_oper = {
-	.getattr	= hello_getattr,
-	.readdir	= hello_readdir,
-	.open		= hello_open,
-	.read		= hello_read,
+static struct fuse_operations dynfilefs_oper = {
+	.getattr	= dynfilefs_getattr,
+	.readdir	= dynfilefs_readdir,
+	.open		= dynfilefs_open,
+	.read		= dynfilefs_read,
 };
 
 int main(int argc, char *argv[])
 {
-	return fuse_main(argc, argv, &hello_oper, NULL);
+	return fuse_main(argc, argv, &dynfilefs_oper, NULL);
 }
