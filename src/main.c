@@ -25,7 +25,7 @@
 #define IS_ALIGNED(addr, size) (((uint64_t) (addr) & (size - 1)) == 0)
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
-static const char* MAGIC_DATA_HDR  = "DyFsDATA";
+static const char *MAGIC_DATA_HDR  = "DyFsDATA";
 
 typedef struct {
     char magic[8];
@@ -47,79 +47,79 @@ static uint64_t   first_datablock_offset;
 
 static int dynfilefs_getattr(const char *path, struct stat *stbuf)
 {
-	int res = 0;
+    int res = 0;
 
-	memset(stbuf, 0, sizeof(struct stat));
-	if (strcmp(path, "/") == 0) {
-		stbuf->st_mode = S_IFDIR | 0755;
-		stbuf->st_nlink = 2;
-	} else if (strcmp(path, dynfilefs_path) == 0) {
-		stbuf->st_mode = S_IFREG | 0444;
-		stbuf->st_nlink = 1;
-		stbuf->st_size = datahdr.size;
-	} else
-		res = -ENOENT;
+    memset(stbuf, 0, sizeof(struct stat));
+    if (strcmp(path, "/") == 0) {
+        stbuf->st_mode = S_IFDIR | 0755;
+        stbuf->st_nlink = 2;
+    } else if (strcmp(path, dynfilefs_path) == 0) {
+        stbuf->st_mode = S_IFREG | 0444;
+        stbuf->st_nlink = 1;
+        stbuf->st_size = datahdr.size;
+    } else
+        res = -ENOENT;
 
-	return res;
+    return res;
 }
 
 static int dynfilefs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
-			 off_t offset, struct fuse_file_info *fi)
+                             off_t offset, struct fuse_file_info *fi)
 {
-	(void) offset;
-	(void) fi;
+    (void) offset;
+    (void) fi;
 
-	if (strcmp(path, "/") != 0)
-		return -ENOENT;
+    if (strcmp(path, "/") != 0)
+        return -ENOENT;
 
-	filler(buf, ".", NULL, 0);
-	filler(buf, "..", NULL, 0);
-	filler(buf, dynfilefs_path + 1, NULL, 0);
+    filler(buf, ".", NULL, 0);
+    filler(buf, "..", NULL, 0);
+    filler(buf, dynfilefs_path + 1, NULL, 0);
 
-	return 0;
+    return 0;
 }
 
 static int dynfilefs_open(const char *path, struct fuse_file_info *fi)
 {
-	if (strcmp(path, dynfilefs_path) != 0)
-		return -ENOENT;
+    if (strcmp(path, dynfilefs_path) != 0)
+        return -ENOENT;
 
-	if ((fi->flags & 3) != O_RDONLY)
-		return -EACCES;
+    if ((fi->flags & 3) != O_RDONLY)
+        return -EACCES;
 
-	return 0;
+    return 0;
 }
 
 static int dynfilefs_read(const char *path, char *buf, size_t _size, off_t _offset,
-		      struct fuse_file_info *fi)
+                          struct fuse_file_info *fi)
 {
-	(void) fi;
+    (void) fi;
     off_t ret;
 
-	if(strcmp(path, dynfilefs_path) != 0)
-		return -ENOENT;
+    if (strcmp(path, dynfilefs_path) != 0)
+        return -ENOENT;
 
     uint64_t offset = (uint64_t) _offset;
     uint64_t size   = (uint64_t) _size;
 
     uint64_t bytes_read = 0;
-	if (offset < datahdr.size) {
+    if (offset < datahdr.size) {
         // trim size to prevent reading past our fixed file size
-		if (offset + size > datahdr.size)
-			size = datahdr.size - offset;
+        if (offset + size > datahdr.size)
+            size = datahdr.size - offset;
 
         uint64_t offset_aligned = ROUNDDOWN(offset, datahdr.blocksize);
         uint64_t read_offset = offset - offset_aligned;
 
-        while(size>0) {
+        while (size>0) {
             uint64_t block_offset = offset_aligned/datahdr.blocksize;
             uint64_t read_size = MIN(datahdr.blocksize - read_offset, size);
 
             uint64_t phys_block_offset = index_table[block_offset];
-            if(phys_block_offset==0 && offset_aligned!=0) {
+            if (phys_block_offset==0 && offset_aligned!=0) {
                 //fprintf(stderr, "ZERO: %llu\n", block_offset);
                 // block doesn't exist, copy zeroblock
-        		memcpy(buf, zeroblock + read_offset, read_size);
+                memcpy(buf, zeroblock + read_offset, read_size);
             }
 
             else {
@@ -128,20 +128,20 @@ static int dynfilefs_read(const char *path, char *buf, size_t _size, off_t _offs
 
                 // seek to block in file
                 ret = lseek(fd_data, phys_block_offset, SEEK_SET);
-                if(ret==(off_t)-1 || (uint64_t)ret!=phys_block_offset) {
+                if (ret==(off_t)-1 || (uint64_t)ret!=phys_block_offset) {
                     fprintf(stderr, "seek error\n");
 
-                    if(ret!=(off_t)-1)
+                    if (ret!=(off_t)-1)
                         bytes_read += ret;
                     break;
                 }
 
                 // read block from file
                 ret = read(fd_data, buf, read_size);
-                if(ret==(off_t)-1 || (uint64_t)ret!=read_size){
+                if (ret==(off_t)-1 || (uint64_t)ret!=read_size) {
                     fprintf(stderr, "read error\n");
 
-                    if(ret!=(off_t)-1)
+                    if (ret!=(off_t)-1)
                         bytes_read += ret;
                     break;
                 }
@@ -153,43 +153,44 @@ static int dynfilefs_read(const char *path, char *buf, size_t _size, off_t _offs
             read_offset = 0;
             offset_aligned += datahdr.blocksize;
         }
-	}
+    }
 
     // can't read past our fixed file size
     else {
-		bytes_read = 0;
+        bytes_read = 0;
     }
 
-	return bytes_read;
+    return bytes_read;
 }
 
 static struct fuse_operations dynfilefs_oper = {
-	.getattr	= dynfilefs_getattr,
-	.readdir	= dynfilefs_readdir,
-	.open		= dynfilefs_open,
-	.read		= dynfilefs_read,
+    .getattr    = dynfilefs_getattr,
+    .readdir    = dynfilefs_readdir,
+    .open       = dynfilefs_open,
+    .read       = dynfilefs_read,
 };
 
-static int dynfilefs_opt_proc(void *data, const char *arg, int key, struct fuse_args *outargs) {
+static int dynfilefs_opt_proc(void *data, const char *arg, int key, struct fuse_args *outargs)
+{
     (void)(data);
     (void)(outargs);
 
-    if(key==FUSE_OPT_KEY_NONOPT && !mount_source){
+    if (key==FUSE_OPT_KEY_NONOPT && !mount_source) {
         mount_source = strdup(arg);
         return 0;
-    }
-    else if(key==FUSE_OPT_KEY_OPT && strlen(arg)>2 && arg[0]=='-' && arg[1]=='s') {
+    } else if (key==FUSE_OPT_KEY_OPT && strlen(arg)>2 && arg[0]=='-' && arg[1]=='s') {
         sscanf(arg+2, "%llu", &file_size);
         return 0;
     }
-    if(key==FUSE_OPT_KEY_NONOPT){
+    if (key==FUSE_OPT_KEY_NONOPT) {
         found_mount_target = 1;
     }
 
     return 1;
 }
 
-static int util_exists(const char *filename) {
+static int util_exists(const char *filename)
+{
     struct stat buffer;
     return stat(filename, &buffer)==0;
 }
@@ -205,81 +206,79 @@ int main(int argc, char *argv[])
     mount_source = NULL;
     fuse_opt_parse(&args, NULL, NULL, dynfilefs_opt_proc);
 
-    if(!mount_source || !found_mount_target) {
+    if (!mount_source || !found_mount_target) {
         fprintf(stderr, "Usage: %s FILE DIRECTORY\n", argv[0]);
-        return 1;        
+        return 1;
     }
 
     // check if file exists
-    if(!util_exists(mount_source)) {
+    if (!util_exists(mount_source)) {
         do_create = 1;
 
-        if(file_size==0) {
+        if (file_size==0) {
             fprintf(stderr, "file %s doesn't exist and no size given\n", mount_source);
             return 1;
         }
 
         // create file
         fd_data = open(mount_source, O_RDWR|O_CREAT, 0644);
-    }
-    else {
+    } else {
         // open existing file
         fd_data = open(mount_source, O_RDWR, 0644);
     }
 
     // opening error
-    if(fd_data<0) {
+    if (fd_data<0) {
         fprintf(stderr, "can't open %s: %s\n", mount_source, strerror(errno));
         return 1;
     }
 
-    if(do_create) {
+    if (do_create) {
         // write header
         memcpy(datahdr.magic, MAGIC_DATA_HDR, sizeof(datahdr.magic));
         datahdr.blocksize = default_block_size;
         datahdr.size = ROUNDUP(file_size, datahdr.blocksize);
-        if(write(fd_data, &datahdr, sizeof(datahdr))!=sizeof(datahdr)) {
+        if (write(fd_data, &datahdr, sizeof(datahdr))!=sizeof(datahdr)) {
             fprintf(stderr, "can't write to %s: %s\n", mount_source, strerror(errno));
             close(fd_data);
             return 1;
         }
-    }
-    else {
+    } else {
         // read header
-        if(read(fd_data, &datahdr, sizeof(datahdr))!=sizeof(datahdr)) {
+        if (read(fd_data, &datahdr, sizeof(datahdr))!=sizeof(datahdr)) {
             fprintf(stderr, "can't read from %s: %s\n", mount_source, strerror(errno));
             close(fd_data);
             return 1;
         }
 
         // check magic
-        if(memcmp(datahdr.magic, MAGIC_DATA_HDR, sizeof(datahdr.magic))) {
+        if (memcmp(datahdr.magic, MAGIC_DATA_HDR, sizeof(datahdr.magic))) {
             fprintf(stderr, "invalid magic in %s\n", mount_source);
             close(fd_data);
             return 1;
         }
 
         // check size alignment
-        if(!IS_ALIGNED(datahdr.size, datahdr.blocksize)) {
+        if (!IS_ALIGNED(datahdr.size, datahdr.blocksize)) {
             fprintf(stderr, "size %llu is not a multiple of the blocksize(%u)\n", datahdr.size, datahdr.blocksize);
             close(fd_data);
-            return 1;    
+            return 1;
         }
     }
 
     // allocate zeroblock
     zeroblock = calloc(1, datahdr.blocksize);
-    if(!zeroblock) {
+    if (!zeroblock) {
         fprintf(stderr, "can't allocate zeroblock\n");
         close(fd_data);
         return 1;
     }
 
-    if(do_create) {
+    if (do_create) {
         // create index table
         uint64_t n0 = 0;
-        for(i=0; i<(datahdr.size/datahdr.blocksize); i++) {
-            if(write(fd_data, &n0, sizeof(n0))!=sizeof(n0)) {
+        for (i=0; i<(datahdr.size/datahdr.blocksize); i++) {
+            if (write(fd_data, &n0, sizeof(n0))!=sizeof(n0)) {
                 fprintf(stderr, "can't write to %s: %s\n", mount_source, strerror(errno));
                 close(fd_data);
                 return 1;
@@ -287,7 +286,7 @@ int main(int argc, char *argv[])
         }
 
         // first block 0
-        if(write(fd_data, zeroblock, datahdr.blocksize)!=(ssize_t)datahdr.blocksize) {
+        if (write(fd_data, zeroblock, datahdr.blocksize)!=(ssize_t)datahdr.blocksize) {
             fprintf(stderr, "can't write to %s: %s\n", mount_source, strerror(errno));
             close(fd_data);
             return 1;
@@ -296,8 +295,8 @@ int main(int argc, char *argv[])
 
     // mmap index table
     uint64_t index_table_size = (datahdr.size/datahdr.blocksize)*sizeof(uint64_t);
-    void* map_addr = mmap(0, index_table_size, PROT_READ|PROT_WRITE, MAP_SHARED, fd_data, 0);
-    if(map_addr==MAP_FAILED) {
+    void *map_addr = mmap(0, index_table_size, PROT_READ|PROT_WRITE, MAP_SHARED, fd_data, 0);
+    if (map_addr==MAP_FAILED) {
         fprintf(stderr, "can't mmap index table: %s\n", strerror(errno));
         close(fd_data);
         return 1;
@@ -306,5 +305,5 @@ int main(int argc, char *argv[])
     first_datablock_offset = sizeof(dynfilefs_data_hdr_t) + index_table_size;
 
     // run fuse
-	return fuse_main(args.argc, args.argv, &dynfilefs_oper, NULL);
+    return fuse_main(args.argc, args.argv, &dynfilefs_oper, NULL);
 }
