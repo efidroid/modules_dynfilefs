@@ -132,9 +132,6 @@ static int dynfilefs_read(const char *path, char *buf, size_t _size, off_t _offs
                 // seek to block in file
                 ret = lseek(fd_data, phys_read_offset, SEEK_SET);
                 if (ret==(off_t)-1 || (uint64_t)ret!=phys_read_offset) {
-                    fprintf(stderr, "seek error: %s\n", strerror(errno));
-                    exit(1);
-
                     if (ret!=(off_t)-1)
                         bytes_read += ret;
                     break;
@@ -143,9 +140,6 @@ static int dynfilefs_read(const char *path, char *buf, size_t _size, off_t _offs
                 // read block from file
                 ret = read(fd_data, buf, read_size);
                 if (ret==(off_t)-1 || (uint64_t)ret!=read_size) {
-                    fprintf(stderr, "read error %llu from %llu: ret:%lld  errno:%s\n", read_size, phys_read_offset, ret, strerror(errno));
-                    exit(1);
-
                     if (ret!=(off_t)-1)
                         bytes_read += ret;
                     break;
@@ -202,17 +196,14 @@ static int dynfilefs_write(const char *path, const char *buf, size_t _size,
             if (phys_block_offset==0 && block_offset!=0) {
                 // skip if this block is filled with zeros only
                 if (!memcmp(buf, zeroblock, write_size)) {
-                    fprintf(stderr, "SKIP\n");
                     goto next_block;
                 }
 
                 // block doesn't exist, allocate one
-                fprintf(stderr, "ALLOC: %llu\n", block_offset);
                 phys_block_offset = datahdr->num_allocated_blocks++;
                 is_new_block = 1;
             }
 
-            fprintf(stderr, "WRITE: %llu\n", phys_block_offset);
             uint64_t phys_write_offset = first_datablock_offset + phys_block_offset*datahdr->blocksize;
             if (!is_new_block)
                 phys_write_offset += write_offset;
@@ -220,9 +211,6 @@ static int dynfilefs_write(const char *path, const char *buf, size_t _size,
             // seek to block in file
             ret = lseek(fd_data, phys_write_offset, SEEK_SET);
             if (ret==(off_t)-1 || (uint64_t)ret!=phys_write_offset) {
-                fprintf(stderr, "seek error: %s\n", strerror(errno));
-                exit(1);
-
                 if (ret!=(off_t)-1)
                     bytes_written += ret;
                 break;
@@ -232,9 +220,6 @@ static int dynfilefs_write(const char *path, const char *buf, size_t _size,
                 // write leading zeros
                 ret = write(fd_data, zeroblock, write_offset);
                 if (ret==(off_t)-1 || (uint64_t)ret!=write_offset) {
-                    fprintf(stderr, "write error %llu to %llu: ret:%lld  errno:%s\n", write_offset, phys_write_offset, ret, strerror(errno));
-                    exit(1);
-
                     if (ret!=(off_t)-1)
                         bytes_written += ret;
                     break;
@@ -244,9 +229,6 @@ static int dynfilefs_write(const char *path, const char *buf, size_t _size,
             // write data to file
             ret = write(fd_data, buf, write_size);
             if (ret==(off_t)-1 || (uint64_t)ret!=write_size) {
-                fprintf(stderr, "write error %llu to %llu: ret:%lld  errno:%s\n", write_size, phys_write_offset+write_offset, ret, strerror(errno));
-                exit(1);
-
                 if (ret!=(off_t)-1)
                     bytes_written += ret;
                 break;
@@ -258,9 +240,6 @@ static int dynfilefs_write(const char *path, const char *buf, size_t _size,
                 if (trailing_writesize>0) {
                     ret = write(fd_data, zeroblock, trailing_writesize);
                     if (ret==(off_t)-1 || (uint64_t)ret!=trailing_writesize) {
-                        fprintf(stderr, "write error %llu to %llu: ret:%lld  errno:%s\n", trailing_writesize, phys_write_offset+write_offset+write_size, ret, strerror(errno));
-                        exit(1);
-
                         if (ret!=(off_t)-1)
                             bytes_written += ret;
                         break;
