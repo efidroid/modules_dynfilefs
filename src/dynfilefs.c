@@ -268,6 +268,7 @@ static int dynfilefs_fsync(const char *path, int isdatasync,
     (void) isdatasync;
     (void) fi;
     fsync(fd_data);
+    fflush(fp_data);
     return 0;
 }
 
@@ -276,6 +277,7 @@ static int dynfilefs_flush(const char *path, struct fuse_file_info *fi)
     (void) path;
     (void) fi;
     fsync(fd_data);
+    fflush(fp_data);
     return 0;
 }
 
