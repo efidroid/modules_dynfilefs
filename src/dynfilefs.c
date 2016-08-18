@@ -41,6 +41,7 @@ static char       *mount_source = NULL;
 static int        found_mount_target = 0;
 static uint64_t   file_size = 0;
 static int        fd_data = -1;
+static FILE       *fp_data = NULL;
 static dynfilefs_data_hdr_t *datahdr = NULL;
 static uint64_t   default_block_size = 4096;
 static char       *zeroblock = NULL;
@@ -168,7 +169,8 @@ static int dynfilefs_write(const char *path, const char *buf, size_t _size,
                            off_t _offset, struct fuse_file_info *fi)
 {
     (void)(fi);
-    off_t ret;
+    size_t ret;
+    int rc;
 
     if (strcmp(path, dynfilefs_path) != 0)
         return -ENOENT;
@@ -209,28 +211,22 @@ static int dynfilefs_write(const char *path, const char *buf, size_t _size,
                 phys_write_offset += write_offset;
 
             // seek to block in file
-            ret = lseek(fd_data, phys_write_offset, SEEK_SET);
-            if (ret==(off_t)-1 || (uint64_t)ret!=phys_write_offset) {
-                if (ret!=(off_t)-1)
-                    bytes_written += ret;
+            rc = fseeko(fp_data, phys_write_offset, SEEK_SET);
+            if (rc) {
                 break;
             }
 
             if (is_new_block && write_offset>0) {
                 // write leading zeros
-                ret = write(fd_data, zeroblock, write_offset);
-                if (ret==(off_t)-1 || (uint64_t)ret!=write_offset) {
-                    if (ret!=(off_t)-1)
-                        bytes_written += ret;
+                ret = fwrite(zeroblock, write_offset, 1, fp_data);
+                if (ret!=1) {
                     break;
                 }
             }
 
             // write data to file
-            ret = write(fd_data, buf, write_size);
-            if (ret==(off_t)-1 || (uint64_t)ret!=write_size) {
-                if (ret!=(off_t)-1)
-                    bytes_written += ret;
+            ret  = fwrite(buf, write_size, 1, fp_data);
+            if (ret!=1) {
                 break;
             }
 
@@ -238,10 +234,8 @@ static int dynfilefs_write(const char *path, const char *buf, size_t _size,
                 uint64_t trailing_writesize = datahdr->blocksize-write_offset-write_size;
                 // write trailing zeros
                 if (trailing_writesize>0) {
-                    ret = write(fd_data, zeroblock, trailing_writesize);
-                    if (ret==(off_t)-1 || (uint64_t)ret!=trailing_writesize) {
-                        if (ret!=(off_t)-1)
-                            bytes_written += ret;
+                    ret = fwrite(zeroblock, trailing_writesize, 1, fp_data);
+                    if (ret!=1) {
                         break;
                     }
                 }
@@ -440,6 +434,12 @@ int dynfilefs_main(int argc, char *argv[])
     datahdr = map_addr;
     index_table = map_addr + sizeof(dynfilefs_data_hdr_t);
     first_datablock_offset = mmap_size;
+
+    fp_data = fopen(mount_source, "r+");
+    if (!fp_data) {
+        fprintf(stderr, "can't open %s: %s\n", mount_source, strerror(errno));
+        return 1;
+    }
 
     // run fuse
     return fuse_main(args.argc, args.argv, &dynfilefs_oper, NULL);
