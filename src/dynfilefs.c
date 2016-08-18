@@ -97,7 +97,8 @@ static int dynfilefs_read(const char *path, char *buf, size_t _size, off_t _offs
                           struct fuse_file_info *fi)
 {
     (void) fi;
-    off_t ret;
+    int rc;
+    size_t ret;
 
     if (strcmp(path, dynfilefs_path) != 0)
         return -ENOENT;
@@ -131,18 +132,14 @@ static int dynfilefs_read(const char *path, char *buf, size_t _size, off_t _offs
                 phys_read_offset += read_offset;
 
                 // seek to block in file
-                ret = lseek(fd_data, phys_read_offset, SEEK_SET);
-                if (ret==(off_t)-1 || (uint64_t)ret!=phys_read_offset) {
-                    if (ret!=(off_t)-1)
-                        bytes_read += ret;
+                rc = fseeko(fp_data, phys_read_offset, SEEK_SET);
+                if (rc) {
                     break;
                 }
 
                 // read block from file
-                ret = read(fd_data, buf, read_size);
-                if (ret==(off_t)-1 || (uint64_t)ret!=read_size) {
-                    if (ret!=(off_t)-1)
-                        bytes_read += ret;
+                ret = fread(buf, read_size, 1, fp_data);
+                if (ret!=1) {
                     break;
                 }
             }
