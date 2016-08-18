@@ -193,11 +193,6 @@ static int dynfilefs_write(const char *path, const char *buf, size_t _size,
             uint64_t phys_block_offset = index_table[block_offset];
             int is_new_block = 0;
             if (phys_block_offset==0 && block_offset!=0) {
-                // skip if this block is filled with zeros only
-                if (!memcmp(buf, zeroblock, write_size)) {
-                    goto next_block;
-                }
-
                 // block doesn't exist, allocate one
                 phys_block_offset = datahdr->num_allocated_blocks++;
                 is_new_block = 1;
@@ -243,7 +238,6 @@ static int dynfilefs_write(const char *path, const char *buf, size_t _size,
                 index_table[block_offset] = phys_block_offset;
             }
 
-next_block:
             buf += write_size;
             bytes_written += write_size;
             size -= write_size;
