@@ -20,6 +20,7 @@
 #include <sys/mman.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 #define PACKED  __attribute__((packed))
 #define ROUNDUP(a, b) (((a) + ((b)-1)) & ~((b)-1))
@@ -294,7 +295,7 @@ static int dynfilefs_opt_proc(void *data, const char *arg, int key, struct fuse_
         mount_source = strdup(arg);
         return 0;
     } else if (key==FUSE_OPT_KEY_OPT && strlen(arg)>2 && arg[0]=='-' && arg[1]=='s') {
-        sscanf(arg+2, "%llu", &file_size);
+        sscanf(arg+2, "%"PRIu64, &file_size);
         return 0;
     }
     if (key==FUSE_OPT_KEY_NONOPT) {
@@ -376,14 +377,14 @@ int dynfilefs_main(int argc, char *argv[])
 
         // check size alignment
         if (!IS_ALIGNED(tmpdatahdr.size, tmpdatahdr.blocksize)) {
-            fprintf(stderr, "size %llu is not a multiple of the blocksize(%llu)\n", tmpdatahdr.size, tmpdatahdr.blocksize);
+            fprintf(stderr, "size %"PRIu64" is not a multiple of the blocksize(%"PRIu64")\n", tmpdatahdr.size, tmpdatahdr.blocksize);
             close(fd_data);
             return 1;
         }
 
         // check allocated block number
         if (tmpdatahdr.num_allocated_blocks<1 || tmpdatahdr.num_allocated_blocks>tmpdatahdr.size/tmpdatahdr.blocksize) {
-            fprintf(stderr, "num_allocated_blocks %llu is invalid\n", tmpdatahdr.num_allocated_blocks);
+            fprintf(stderr, "num_allocated_blocks %"PRIu64" is invalid\n", tmpdatahdr.num_allocated_blocks);
             close(fd_data);
             return 1;
         }
