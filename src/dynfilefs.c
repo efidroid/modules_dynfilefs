@@ -8,7 +8,7 @@
   gcc -Wall dynfilefs.c `pkg-config fuse --cflags --libs` -o dynfilefs
 */
 
-#define FUSE_USE_VERSION 26
+#define FUSE_USE_VERSION 30
 
 #include <fuse.h>
 #include <stdio.h>
@@ -50,8 +50,10 @@ static uint64_t   *index_table = NULL;
 static uint64_t   first_datablock_offset;
 static pthread_mutex_t dynfilefs_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static int dynfilefs_getattr(const char *path, struct stat *stbuf)
+static int dynfilefs_getattr(const char *path, struct stat *stbuf,
+                             struct fuse_file_info *fi)
 {
+    (void) fi;
     int res = 0;
 
     memset(stbuf, 0, sizeof(struct stat));
@@ -69,17 +71,19 @@ static int dynfilefs_getattr(const char *path, struct stat *stbuf)
 }
 
 static int dynfilefs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
-                             off_t offset, struct fuse_file_info *fi)
+                             off_t offset, struct fuse_file_info *fi,
+                             enum fuse_readdir_flags flags)
 {
     (void) offset;
     (void) fi;
+    (void) flags;
 
     if (strcmp(path, "/") != 0)
         return -ENOENT;
 
-    filler(buf, ".", NULL, 0);
-    filler(buf, "..", NULL, 0);
-    filler(buf, dynfilefs_path + 1, NULL, 0);
+    filler(buf, ".", NULL, 0, 0);
+    filler(buf, "..", NULL, 0, 0);
+    filler(buf, dynfilefs_path + 1, NULL, 0, 0);
 
     return 0;
 }
@@ -90,6 +94,8 @@ static int dynfilefs_open(const char *path, struct fuse_file_info *fi)
 
     if (strcmp(path, dynfilefs_path) != 0)
         return -ENOENT;
+
+    fi->direct_io = 1;
 
     return 0;
 }
