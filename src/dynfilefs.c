@@ -343,10 +343,10 @@ int dynfilefs_main(int argc, char *argv[])
         }
 
         // create file
-        fd_data = open(mount_source, O_RDWR|O_CREAT, 0644);
+        fd_data = open(mount_source, O_RDWR|O_CREAT|O_CLOEXEC, 0644);
     } else {
         // open existing file
-        fd_data = open(mount_source, O_RDWR, 0644);
+        fd_data = open(mount_source, O_RDWR|O_CLOEXEC, 0644);
     }
 
     // opening error
@@ -435,7 +435,7 @@ int dynfilefs_main(int argc, char *argv[])
     index_table = map_addr + sizeof(dynfilefs_data_hdr_t);
     first_datablock_offset = mmap_size;
 
-    fp_data = fopen(mount_source, "r+");
+    fp_data = fopen(mount_source, "r+b");
     if (!fp_data) {
         fprintf(stderr, "can't open %s: %s\n", mount_source, strerror(errno));
         return 1;
